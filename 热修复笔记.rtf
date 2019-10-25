@@ -1,0 +1,49 @@
+1、Android虚拟机
+    <5.0Davik	>=5.0可以手动开启
+    dexOpt ->odex
+
+    6.0 中完全使用ART
+    安装慢
+    dexOpt ->odex -> dexaot -> aot文件：二进制文件，机器码
+
+    Android N 混合编译
+    JIT AOT 解释执行
+
+2、兼容问题
+    <6.0	得到Element[]的方法是makeDexElments，参数是ArrayList类型
+    >=6.0	得到Element[]的方法是makePathElments，参数是List类型
+
+3、异常：
+    在Android4.4会发生：Class ref in pre-verified class resolved to unexpected implementation异常，出现的原因是：
+    比如一个dex中有MainActivity、Utils这两个类，在编译时程序检测到MainActivity引用了Utils类则会在MainActivity中
+    打上CLASS_ISPREVERIFE标签，方便程序在执行时得到优化，但是钥匙这个utils类出现了bug，我们打得补丁包和dex中
+    的utils在mainActivity中引用时出现了冲突，则就会出现这个异常
+
+    解决办法：
+    字节码插桩技术（ASM）
+    创建library，里面实现一个AntilazyLoad类，通过编译生成jar，
+    然后通过上面的命令生成dex文件，然后放在项目的assets目录下
+    最后将dex插入到dexElement数组前
+
+    而我们如何让项目中的所有文件引用AntilazyLoad呢？则需要通过
+    Hook技术让编译器从Java文件编译成class个时候进行操作，操作方式
+    则是通过自定义插件方式完成！
+
+    我们知道，之前在用Eclipse开发时，是通过ANT/MAVEN完成打包，而
+    这俩工具是通过配置XMl完成的。如今我们用AS开发，则是通过gradle
+    完成打包。gradle是什么？它是运行在JVM上的一个脚本工具，内部完全
+    可以写java代码
+
+
+4、手动生成补丁包
+    1)命令来到项目app/build/tmp/kotlin-classes/debug所在的class目录下(每个版本的AS目录可能有差异)
+    2)在输入命令（参数一是本地sdk中的dx脚本路径；参数二是格式；参数四是输出的名字；参数五是要生成补丁包的文件）：
+    /Users/yinzhengwei/Library/Android/sdk/build-tools/28.0.2/dx --dex --output=patch.jar com/yzw/dexdemo/MainActivity.class
+    并回车就会看到对应目录下的patch.jar文件
+
+
+5、热修复模拟使用流程
+    1）运行一个有bug的应用程序在手机上；
+    2）修复完又bug的类，然后在AS下方的Terminal中通过上述命令完成有bug的类文件的编译；
+    3）将打包完成的fix.jar放在sdcard目录下；
+    4）彻底关掉应用，然后重启即可
