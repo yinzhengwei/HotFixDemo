@@ -20,7 +20,7 @@ android {
     }
 }
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar','*.aar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'androidx.core:core-ktx:1.0.2'
@@ -31,13 +31,87 @@ dependencies {
 }
 
 //定义在编译完成后要执行的任务
+//afterEvaluate({
+//    android.getApplicationVariants().all { variant ->
+//        //获取debug/release
+//        String variantName = variant.getName()
+//
+//        println(variantName)
+//
+//    }
+//})
+
 afterEvaluate({
+
+    //Variants:debug和release
     android.getApplicationVariants().all { variant ->
         //获取debug/release
         String variantName = variant.getName()
 
-        println(variantName)
+        //首字母大写
+        String capitalizeName = variantName.capitalize()
+
+        //把jar和class打包成dex的任务
+        Task dexTask = project.getTasks().findByName("transformClassesWithDexBuilderFor" + capitalizeName)
+
+        //每个任务都有doFirst和doLast，这里需要在打包之前执行插桩
+        dexTask.doFirst {
+            //任务的输入，dex打包任务要输入什么？自然是所有的class与jarbao了！
+            Set<File> files = dexTask.getInputs().getFiles().getFiles()
+            for (File file : files) {
+                //依赖的库会以jat形式传进来，对依赖库也执行插桩
+                String filePath = file.getAbsolutePath()
+                if (filePath.endsWith(".jar")) {
+
+                } else if (filePath.endsWith(".class")) {
+                    //主要是我们自己写的app模块中的代码
+                }
+
+            }
+
+        }
 
     }
 })
 
+/**
+ * @params:
+ * file:
+ * /xxx/app/build/intermediates/classes/debug/com/yzw/dexdemo/MainActivity.class
+ *
+ */
+static void processClass(String dirName, File file) {
+    def absolutePath = file.getAbsolutePath()
+
+    //注意这里的filePath包含了目录+包名+类名，所以去掉目录
+    def className = absolutePath.split(dirName)[1].substring(1)
+
+    printIn className
+    //application或者android support我们不管
+    if (className.startsWith("com/yzw/dexdemo/DefaultApplication") || className.startsWith("android")
+            || className.startsWith("androidx")) {
+        return
+    }
+
+    try {
+        //byte[] -> class 修改byte[]
+        def is = new FileInputStream(absolutePath)
+
+        //执行插桩 byteCode:插桩之后的class数据，把它替换掉插桩之前的class文件
+
+
+
+
+    } catch (Exception e) {
+        e.printStackTrace()
+    }
+
+
+//    static byte[] referHackWthenInit(){
+//       // def cr =
+//
+//
+//
+//    }
+
+}
